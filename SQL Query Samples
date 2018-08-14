@@ -1,0 +1,100 @@
+-- This report retrieves ticket information for anything with 'Click Cart' in the title --
+Select a.TicketId, [From], Title, Description, Convert(varchar(10),DateCreated, 1) as 'Datecreated'
+	   ,Category, SubCategory, b.Value, CreatedByUser, Technician
+  From BOSSASSIST_V_TICKET_MST a
+  Join BOSSASSIST_X_CUSTOM b
+    on a.TicketId = b.TicketId
+ Where DateCreated between '1/1/18' and '1/1/19'
+   and Title like '%Click%Cart%'
+ Order By a.TicketId desc
+
+
+-- Desktop Team - Tickets Worked --
+Declare @StartDate VARCHAR(10),
+		@EndDate VARCHAR(10)
+	Set @StartDate = '4/1/18';
+	Set	@Enddate = '7/1/18'
+
+
+Select tw.Name as 'Technician', tc.[ Number of Tickets] as 'Tickets Created', tw.[Number of Tickets] as 'Tickets Worked', 
+	   tcl.[Number of Tickets] as 'Tickets Closed'
+  From (Select CreatedByUser, COUNT(ticketid) as ' Number of Tickets'
+          From BOSSASSIST_V_TICKET_MST
+         Where DateCreated between @StartDate  and @EndDate
+           and (CreatedByUser = 'Javier Villa' or CreatedByUser = 'Joe Chu' or CreatedByUser = 'Sharon Casey' or CreatedByUser = 'Suzanne Ruiz')
+         Group by CreatedByUser) tc
+ Right Join (Select name, count(distinct a.TicketId) as 'Number of Tickets'
+               From Report_View_Ticket_Notes a
+               Join BOSSASSIST_V_TICKET_MST b
+                 on a.TicketId = b.TicketId
+              Where b.datecreated between @StartDate and @EndDate
+                and (Name like 'Javier Villa' or Name = 'Joe Chu' or Name = 'Sharon Casey' or Name = 'Suzanne Ruiz')
+              Group by name) tw
+    on tc.CreatedByUser = tw.Name
+  Full Join (Select Technician, COUNT(ticketid) as 'Number of Tickets'
+			   From BOSSASSIST_V_TICKET_MST
+			  Where LastUpdated between @StartDate and @EndDate
+				and StatusId = '3'
+				and (Technician = 'Javier Villa' or Technician = 'Joe Chu' or Technician = 'Sharon Casey' or Technician = 'Suzanne Ruiz')
+			  Group by Technician) tcl
+    on tw.Name = tcl.Technician
+
+
+
+-- This report calculates the time added by the field technician for tickets with their depot store as the user for a given date range. The time is in minutes and time is calculated based on the time start time field on the timesheet info tab of each ticket. 
+
+Select ta.Technician, Sum(ta.Minutes) as 'Time Added From Depot'
+  From BOSSASSIST_V_TICKET_MST a
+  Join (Select b2.DisplayName as 'Technician', a2.CreatedBy as 'Time For', c2.[From], 
+			   a2.TicketId, DATEDIFF(MINUTE, a2.StartTime, a2.EndTime) as 'Minutes', a2.StartTime
+		  From BOSSASSIST_TICKET_TIMESHEET a2
+		  Join DiagWin_CONTACT_MST b2
+			on a2.CreatedBy = b2.ContactId
+		  Join BOSSASSIST_V_TICKET_MST c2
+			on a2.TicketId = c2.TicketId
+		 Where (b2.DisplayName = 'Sam Rodriguez' and c2.[From] = '719')
+			or (b2.DisplayName = 'Philip Montalvan' and c2.[From] = '96')
+			or (b2.DisplayName = 'Renee Estarziau' and c2.[From] = '209')
+			or (b2.DisplayName = 'David Jamie' and c2.[From] = '407')
+			or (b2.DisplayName = 'Nick Cazier' and c2.[From] = '459')
+			or (b2.DisplayName = 'Patrick Miller' and c2.[From] = '464')
+			or (b2.DisplayName = 'Abundio Montejano' and c2.[From] = '474')
+			or (b2.DisplayName = 'Kevin Curtis' and c2.[From] = '484')
+			or (b2.DisplayName = 'Brandon Eaton' and c2.[From] = '554')
+			or (b2.DisplayName = 'Randy Brooks' and c2.[From] = '601')
+			or (b2.DisplayName = 'Ronnie Laniohan' and c2.[From] = '705')
+			or (b2.DisplayName = 'Henry Jarrow' and c2.[From] = '726')
+			or (b2.DisplayName = 'Minh Duong' and c2.[From] = '761')
+			or (b2.DisplayName = 'Roy Littwin' and c2.[From] = '775')
+			or (b2.DisplayName = 'Raymond Espinoza' and c2.[From] = '781')
+			or (b2.DisplayName = 'John Selby-Hele' and c2.[From] = '782')
+     ) as ta
+    on a.TicketId = ta.TicketId
+   and DateCreated between '7/22/18' and '7/28/18 23:59:59'
+ Group by ta.Technician
+ Order by ta.Technician asc
+
+-- This report retrieves information on tickets created at the help desk and assigned to different departments. This is used to track down which issues we need more training on or to find current pain points. --
+
+Select a.[From], a.TicketID, a.Title, a.DateCreated, a.Severity, a.Status, a.CreatedByUser, 
+	   a.TechTeamName, a.Technician, a.Subcategory, b.Value, a.ParentTicketId
+  From BOSSASSIST_V_TICKET_MST a
+  Join BOSSASSIST_X_CUSTOM b
+    on a.TicketId = b.TicketId
+ Where DateCreated between '7/8/18' and '7/15/2018'
+   and (CreatedByUser = 'Paul Estrada' 
+	or CreatedByUser = 'Matthew Bungum'
+	or CreatedByUser = 'Tonya Holmes'
+	or CreatedByUser = 'Tammy Rushton'
+	or CreatedByUser = 'Kyle Frank'
+	or CreatedByUser = 'Daniel Garcia'
+	or CreatedByUser = 'Dave Heredia'
+	or CreatedByUser = 'Matthew Sather'
+	or CreatedByUser = 'Brittany Balandran'
+	or CreatedByUser = 'Jennifer Smith')
+   and TechTeamName != 'It Help Desk'
+   and Value != 'Wireless'
+   and ParentTicketId = '0'
+ order by TicketId asc
+
+
